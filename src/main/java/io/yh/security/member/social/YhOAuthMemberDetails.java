@@ -1,4 +1,8 @@
 package io.yh.security.member.social;
 
-public class YhOAuthMemberDetails {
+public interface YhOAuthMemberDetails {
+    String getProviderId();
+    String getEmail();
+    String getName();
+    String getPicture();
 }
