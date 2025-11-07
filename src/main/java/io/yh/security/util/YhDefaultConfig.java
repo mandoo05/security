@@ -16,9 +16,10 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 
 @Configuration(proxyBeanMethods = false)
 public class YhDefaultConfig {
+
     @Bean
     @ConditionalOnMissingBean(JwtProvider.class)
-    public JwtProvider yhJwtProvider() {
+    public JwtProvider<?> yhJwtProvider() {
         return new JwtProviderBasic();
     }
 
@@ -37,9 +38,9 @@ public class YhDefaultConfig {
     @Bean
     @ConditionalOnMissingBean(FilterContext.class)
     public FilterContext yhFilterContext(AuthenticationConfiguration authConfig,
-                                           JwtProvider jwtProvider,
-                                           CookieProvider cookieProvider,
-                                           SecurityProperties properties) throws Exception {
+                                         JwtProvider<?> jwtProvider,
+                                         CookieProvider cookieProvider,
+                                         SecurityProperties properties) throws Exception {
         return FilterContext.builder()
                 .authenticationManager(authConfig.getAuthenticationManager())
                 .jwtProvider(jwtProvider)

@@ -1,8 +1,5 @@
 package io.yh.security.filter;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.UnsupportedJwtException;
 import io.yh.security.config.FilterContext;
 import io.yh.security.config.SecurityProperties;
 import io.yh.security.config.jwt.JwtProvider;
@@ -12,7 +9,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,59 +17,49 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 
-@Slf4j
 @RequiredArgsConstructor
 public class JwtFilterBasic extends OncePerRequestFilter {
 
-    private final JwtProvider jwtProvider;
+    private final JwtProvider<YhMemberDetails> jwtProvider;
     private final SecurityProperties properties;
 
     public JwtFilterBasic(FilterContext context) {
-        this.jwtProvider = context.jwtProvider();
+        this.jwtProvider = (JwtProvider<YhMemberDetails>) context.jwtProvider();
         this.properties = context.properties();
     }
 
-
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        String jwtTokenHeader = request.getHeader(properties.getJwtHeaderString());
-        if (jwtTokenHeader == null
-                || jwtTokenHeader.equals("null")
-                || jwtTokenHeader.equals("undefined")) {
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        String header = request.getHeader(properties.getJwtHeaderString());
+
+        if (header == null || header.isBlank()
+                || header.equalsIgnoreCase("null")
+                || header.equalsIgnoreCase("undefined")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwtTokenHeader = jwtTokenHeader.replace(properties.getTokenPrefix(), "");
-
-        if (jwtTokenHeader.isEmpty()
-                || jwtTokenHeader.equals("null")
-                || jwtTokenHeader.equals("undefined")) {
+        String token = header.replace(properties.getTokenPrefix(), "").trim();
+        if (token.isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        try {
-            SecretKey jwtKey = jwtProvider.getKey(properties.getJwtSecret());
-            YhMemberDetails memberDetails = jwtProvider.parseJwtToken(jwtTokenHeader, jwtKey);
-            Authentication authentication =
-                    new UsernamePasswordAuthenticationToken(memberDetails, null, memberDetails.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } catch (ExpiredJwtException e) {
-            writeErrorResponse("Token has expired");
-        } catch (MalformedJwtException | UnsupportedJwtException e) {
-            writeErrorResponse("Invalid JWT token");
-        } catch (IllegalArgumentException e) {
-            writeErrorResponse("Missing authentication token");
-        } catch (Exception e) {
-            writeErrorResponse("Authentication failed");
-        }
+        SecretKey key = jwtProvider.getKey(properties.getJwtSecret());
+        YhMemberDetails memberDetails = jwtProvider.parseJwtToken(token, key);
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                memberDetails,
+                null,
+                memberDetails.getAuthorities()
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
         filterChain.doFilter(request, response);
-    }
-
-    private void writeErrorResponse(String message) {
-        log.error("JwtFilterException: {}", message);
     }
 }

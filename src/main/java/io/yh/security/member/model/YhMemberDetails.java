@@ -1,7 +1,5 @@
 package io.yh.security.member.model;
 
-
-import io.yh.security.member.infra.YhMember;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -9,19 +7,47 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
-public class YhMemberDetails implements UserDetails, OAuth2User {
-    private final YhMember member;
+public class YhMemberDetails<T> implements UserDetails, OAuth2User {
 
-    public UUID getId() { return member.getId(); }
-    public String getName() {
-        return member.getName();
+    private final T member;
+    private final Function<T, String> usernameExtractor;
+    private final Function<T, String> passwordExtractor;
+    private final Function<T, Set<String>> roleExtractor;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        Set<String> roles = roleExtractor.apply(member);
+        if (roles == null) return Set.of();
+        return roles.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toSet());
     }
-    public String getEmail() { return member.getEmail(); }
-    public String getProvider() { return member.getProvider(); }
-    public String getPicture() { return member.getPicture(); }
+
+    @Override
+    public String getPassword() {
+        return passwordExtractor.apply(member);
+    }
+
+    @Override
+    public String getUsername() {
+        return usernameExtractor.apply(member);
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
 
     @Override
     public Map<String, Object> getAttributes() {
@@ -29,44 +55,7 @@ public class YhMemberDetails implements UserDetails, OAuth2User {
     }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (member.getRoles() == null || member.getRoles().isEmpty()) {
-            return Set.of();
-        }
-
-        return member.getRoles().stream()
-                .filter(Objects::nonNull)
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toSet());
-    }
-
-    @Override
-    public String getPassword() {
-        return member.getPassword();
-    }
-
-    @Override
-    public String getUsername() {
-        return member.getUsername();
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return "active".equalsIgnoreCase(member.getStatus());
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
+    public String getName() {
+        return getUsername();
     }
 }

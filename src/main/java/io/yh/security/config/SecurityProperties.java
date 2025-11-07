@@ -17,8 +17,8 @@ public class SecurityProperties {
     private String refreshHeaderString = "Refresh";
     private String tokenPrefix = "Bearer ";
 
-    private int accessTokenExpiration;
-    private int refreshTokenExpiration;
+    private int accessTokenExpiration = 3600000;
+    private int refreshTokenExpiration = 604800000;
 
     private String issuer;
     private String algorithm;
